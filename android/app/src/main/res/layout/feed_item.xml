@@ -1,0 +1,27 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:gravity="center_vertical"
+              android:minHeight="?android:attr/listPreferredItemHeight"
+              android:orientation="vertical"
+              android:paddingStart="8dp"
+              android:paddingTop="8dp"
+              android:paddingEnd="8dp"
+              android:paddingBottom="8dp">
+
+    <TextView
+        android:id="@+id/timeline_item_message"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical|start"
+        android:fontFamily="sans-serif-medium"
+        android:textSize="16sp"/>
+
+    <TextView
+        android:id="@+id/timeline_item_author_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical|start"
+        android:fontFamily="sans-serif-medium"
+        android:textSize="12sp"/>
+</LinearLayout>
