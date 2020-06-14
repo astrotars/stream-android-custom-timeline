@@ -39,19 +39,6 @@ object BackendService {
         )
     }
 
-    fun getChatCredentials(): StreamCredentials {
-        val response = post(
-            "/v1/stream-chat-credentials",
-            mapOf(),
-            authToken
-        )
-
-        return StreamCredentials(
-            response.getString("token"),
-            response.getString("apiKey")
-        )
-    }
-
     fun getUsers(): List<String> {
         val request = Request.Builder()
             .url("$apiRoot/v1/users")

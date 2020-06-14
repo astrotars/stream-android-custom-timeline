@@ -34,7 +34,7 @@ class FeedAdapter(context: Context, objects: MutableList<Activity>) :
             viewHolder = newView.tag as ViewHolder
         }
 
-        viewHolder.author.text = streamActivity.actor
+        viewHolder.author.text = streamActivity.actor.replace("SU:", "")
         viewHolder.message.text = streamActivity.extra["message"] as String
 
         newView!!.tag = viewHolder
