@@ -4,7 +4,7 @@ In this post, we'll be creating a simple social network, called The Stream, that
 
 The app will allow a user to post a message to their followers. [Stream's Activity Feed API](https://getstream.io/activity-feeds/) combined with Android makes it straightforward to build this sort of complex interaction. All source code for this application is available on [GitHub](https://github.com/psylinse/stream-android-custom-timeline). This application is fully functional on Android.
 
-Often there is context around those code snippets which are important, such as layout or navigation. Please refer to the full source if you're confused on how something works, what libraries and version are used, or how we got to a screen. Each snippet will be accompanied by a comment explaining which file and line it came from.
+Often there is context around those code snippets which are important, such as layout or navigation. Please refer to the full source if you're confused about how something works, what libraries and versions are used, or how we got to a screen. Each snippet will be accompanied by a comment explaining which file and line it came from.
 
 ## Building "The Stream"
 
@@ -14,10 +14,10 @@ For the backend, we'll rely on [Express](https://expressjs.com/) ([Node.js](http
 
 For the frontend, we'll build it with Kotlin wrapping [Stream Feed's Java](https://github.com/GetStream/stream-java) library. 
 
-There's two main actions a user takes, posting and viewing messages. To post a message, the mobile application goes through his flow:
+There are two main actions a user takes, posting and viewing messages. To post a message, the mobile application goes through his flow:
 
 * User types their name into our mobile application to log in.
-* The Android app registers user with our backend and receives a Stream Activity Feed [frontend token](https://getstream.io/blog/integrating-with-stream-backend-frontend-options/).
+* The Android app registers the user with our backend and receives a Stream Activity Feed [frontend token](https://getstream.io/blog/integrating-with-stream-backend-frontend-options/).
 * User types in their message and hits "Post". The mobile app uses the Stream token to create a Stream activity on their `user` feed via Stream's REST API using the [Java library](https://github.com/GetStream/stream-java).
 * User views their posts. The mobile app does this by retrieving its user feed via Stream.
 
@@ -39,7 +39,7 @@ Once you have an account with Stream, you need to set up a development app. This
 
 ![](images/create-app.png)
 
-You'll need to add the credentials from the Stream app to the `backend` `.env` file and start the server for mobile application to work. See the `backend` `README.md` for more information.
+You'll need to add the credentials from the Stream app to the `backend` `.env` file and start the server for the mobile application to work. See the `backend` `README.md` for more information.
 
 Let's get to building!
 
@@ -49,7 +49,7 @@ We'll start with a user posting a message.
 
 ### Step 1: Log In
 
-In order to communicate with the Stream API, we need a secure frontend token that allows our mobile application to authenticate with Stream directly. This avoids having to proxy all calls through the backend (which is another way of building your application). To do this, we'll need a backend endpoint that uses our Stream account secrets to generate this token. Once we have this token, we don't need the backend to do anything else, since the mobile app has access to the Stream API limited by that user's permissions.
+To communicate with the Stream API, we need a secure frontend token that allows our mobile application to authenticate with Stream directly. This avoids having to proxy all calls through the backend (which is another way of building your application). To do this, we'll need a backend endpoint that uses our Stream account secrets to generate this token. Once we have this token, we don't need the backend to do anything else, since the mobile app has access to the Stream API limited by that user's permissions.
 
 First, we'll be building the log in screen which looks like:
 
@@ -132,10 +132,10 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 }
 ```
 
-*Note: The asyncronous approach in this tutorial is not necessarily the best or most robust approach. It's simply a straightforward way to show async interactions without cluttering the code too much. Please research and pick the best asynchronous solution for your application.*
+*Note: The asynchronous approach in this tutorial is not necessarily the best or most robust approach. It's simply a straightforward way to show async interactions without cluttering the code too much. Please research and pick the best asynchronous solution for your application.*
 
 
-Here we bind to our button and user input. We listen to the submit button and sign into our backend. Since this work is making network calls, we need to do this asynchronously. We use Kotlin coroutines to accomplish this by binding to the [`MainScope`](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-main-scope.html). We dispatch our sign in code which tells our `BackendService` to perform two tasks, sign in to backend and get the feed frontend credentials. We'll look at how the `BackendService` accomplishes this in a second. 
+Here we bind to our button and user input. We listen to the submit button and sign in to our backend. Since this work is making network calls, we need to do this asynchronously. We use Kotlin coroutines to accomplish this by binding to the [`MainScope`](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-main-scope.html). We dispatch our sign-in code which tells our `BackendService` to perform two tasks, sign in to the backend and get the feed frontend credentials. We'll look at how the `BackendService` accomplishes this in a second. 
 
 Once we have our tokens, we initialize our `FeedService` so we can talk to Stream's API (we'll see this in a second as well). When the user is fully authed and we have our credentials, we start a new activity called `AuthedMainActivity` which is the rest of the application.
 
@@ -169,7 +169,7 @@ private fun post(path: String, body: Map<String, Any>, authToken: String? = null
 }
 ```
 
-We do a simple `POST` http request to our backend endpoint `/v1/users`, which returns a `backend` `authToken` that allows the mobile application to make further requests against the backend. Since this not a real implemenation of auth, we'll skip the backend code. Please refer to the source if you're curious. Also keep in mind, this token *is not* the Stream token. We need to make another call for that.
+We do a simple `POST` http request to our backend endpoint `/v1/users`, which returns a `backend` `authToken` that allows the mobile application to make further requests against the backend. Since this not a real implementation of auth, we'll skip the backend code. Please refer to the source if you're curious. Also, keep in mind, this token *is not* the Stream token. We need to make another call for that.
 
 Once the user is signed in with our `backend` we can get our feed credentials via `BackendService.getFeedCredentials()`:
 
@@ -219,7 +219,7 @@ exports.streamFeedCredentials = async (req, res) => {
 };
 ```
 
-We use the [Stream JavaScript library](https://github.com/GetStream/stream-js) to create a user (if they don't exist) and generate a [Stream frontend token](https://getstream.io/blog/integrating-with-stream-backend-frontend-options/). We return this token, alongside some api information, back to the Android app.
+We use the [Stream JavaScript library](https://github.com/GetStream/stream-js) to create a user (if they don't exist) and generate a [Stream frontend token](https://getstream.io/blog/integrating-with-stream-backend-frontend-options/). We return this token, alongside some API information, back to the Android app.
 
 In the mobile app, we use the returned credentials to intialize our `FeedService` by calling `FeedService.init` in `MainActivity`. Here's the `init`:
 
@@ -240,7 +240,7 @@ object FeedService {
 }
 ```
 
-The `FeedService` is a singleton (by using Kotlin's [object](https://kotlinlang.org/docs/reference/object-declarations.html)) which stores a `CloudClient` instance. `CloudClient` is a class provided by Stream's Java library. This class is specifically used to provide functionality to client applications via frontend tokens. Stream's Java library contains a normal client for backend applications, so don't get confused on which client to use. The normal client requires private credentials which you don't want to embed in your mobile application!
+The `FeedService` is a singleton (by using Kotlin's [object](https://kotlinlang.org/docs/reference/object-declarations.html)) which stores a `CloudClient` instance. `CloudClient` is a class provided by Stream's Java library. This class is specifically used to provide the functionality to client applications via frontend tokens. Stream's Java library contains a normal client for backend applications, so don't get confused about which client to use. The normal client requires private credentials that you don't want to embed in your mobile application!
 
 Now that we're authenticated with Stream, we're ready to post our first message!
 
@@ -338,15 +338,15 @@ fun post(message: String) {
 }
 ```
 
-Here we use Stream Java's `CloudClient` from the [Cloud package](https://getstream.github.io/stream-java/io/getstream/cloud/package-summary.html). This set of classes take our frontend token which allows the mobile app to communicate directly with Stream. We are authenticated only to post activities for the actor SU:john (SU means Stream User). Since we aren't storing a corresponding object in a database, we generate an id to keep each post unique. We also pass along a message payload which is what our followers will see.
+Here we use Stream Java's `CloudClient` from the [Cloud package](https://getstream.github.io/stream-java/io/getstream/cloud/package-summary.html). This set of classes takes our frontend token which allows the mobile app to communicate directly with Stream. We are authenticated only to post activities for the actor SU:john (SU means Stream User). Since we aren't storing a corresponding object in a database, we generate an id to keep each post unique. We also pass along a message payload which is what our followers will see.
 
-You may be wondering what the `client.flatFeed("user")` is referring to. In order for this to work, we need to set up a flat feed called "user" in Stream. This is where every user's feed, which only contains their messages will be stored. Later we'll see how one user can follow another user's feed.
+You may be wondering what the `client.flatFeed("user")` is referring to. For this to work, we need to set up a flat feed called "user" in Stream. This is where every user's feed, which only contains their messages will be stored. Later we'll see how one user can follow another user's feed.
 
 Inside of your Stream development app create a flat feed called "user":
 
 ![](images/create-user-feed.png)
 
-That's all we need for Stream to store our messages. Once all of functions return we return to the user's profile screen which will display our posted messages. We'll build this next.
+That's all we need for Stream to store our messages. Once all of the functions return we return to the user's profile screen which will display our posted messages. We'll build this next.
 
 ### Step 3: Displaying Messages on our Profile
 
@@ -432,7 +432,7 @@ And the layout:
 </FrameLayout>
 ```
 
-The `ProfileFragment` does two things. First, it has a floating action button which starts our `CreatePostActivity`, which we saw in Step 2, and handles the result. Second, it loads our personal feed and displays those messages.
+The `ProfileFragment` does two things. First, it has a floating action button that starts our `CreatePostActivity`, which we saw in Step 2, and handles the result. Second, it loads their feed and displays those messages.
 
 Let's see how we load our messages via `FeedService.profileFeed()` invoked inside of `loadProfileFeed`:
 
@@ -484,9 +484,9 @@ class FeedAdapter(context: Context, objects: MutableList<Activity>) :
 }
 ```
 
-To keep thing simple, we use a simple list layout, with a custom view (`feed_item`, please see source) that shows the message and author. However, you can build any view you want! Here, the message is in `extras` to show you how to include arbitrary data in your activities. The `extras` container allows you to attach any data you want to an Activity.
+To keep things simple, we use a simple list layout, with a custom view (`feed_item`, please see source) that shows the message and author. However, you can build any view you want! Here, the message is in `extras` to show you how to include arbitrary data in your activities. The `extras` container allows you to attach any data you want to an Activity.
 
-Next we'll see how to follow multiple user's via a timeline feed.
+Next, we'll see how to follow multiple users via a timeline feed.
 
 ## User Timeline
 
@@ -593,7 +593,7 @@ fun getUsers(): List<String> {
 }
 ```
 
-The `backend` is a mock implementation that simple stores the users in an object. We won't go into this here, but refer to source if interesting and be sure to back this with a real implementation in your production application. 
+The `backend` is a mock implementation that simply stores the users in an object. We won't go into this here, but refer to source if interesting and be sure to back this with a real implementation in your production application. 
 
 Once we have our users we build our list and bind a click listener. This listener will pop open an alert dialog that allows us to follow a user. If a user chooses to follow a user we call `FeedService.follow`:
 
@@ -607,7 +607,7 @@ fun follow(otherUser: String) {
 }
 ```
 
-Here we're adding a [follow relationship](https://getstream.io/docs/#following) to another user's `user` feed to this user's `timeline` feed. All this means is anytime a user posts to their user feed (implemented in the first part) we'll see it on our `timeline` feed. The cool part is, we can add any number of users feeds to our `timeline` feed and Stream will return a well-ordered list of activities.
+Here we're adding a [follow relationship](https://getstream.io/docs/#following) to another user's `user` feed to this user's `timeline` feed. All this means is anytime a user post to their user feed (implemented in the first part) we'll see it on our `timeline` feed. The cool part is, we can add any number of users feeds to our `timeline` feed and Stream will return a well-ordered list of activities.
 
 Since we have a new feed type, we need to set this up in Stream. Just like the `user` feed, navigate to the Stream app you set up and create a flat feed group called timeline:
 
