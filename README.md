@@ -1,4 +1,4 @@
-# Building a Custom Timeline with Stream Activity Feeds and Kotlin on Android
+# Building a Custom Timeline Feed with Stream Activity Feeds and Kotlin on Android
 
 In this post, we'll be creating a simple social network, called The Stream, that allows a user to post messages to followers.
 
@@ -6,22 +6,24 @@ The app will allow a user to post a message to their followers. [Stream's Activi
 
 Often there is context around those code snippets which are important, such as layout or navigation. Please refer to the full source if you're confused on how something works, what libraries and version are used, or how we got to a screen. Each snippet will be accompanied by a comment explaining which file and line it came from.
 
-## Building The Stream
+## Building "The Stream"
 
 To build our social network we'll need both a backend and a mobile application. Most of the work is done in the mobile application, but we need the backend to securely create frontend tokens for interacting with the Stream API.
 
 For the backend, we'll rely on [Express](https://expressjs.com/) ([Node.js](https://nodejs.org/en/)) leveraging [Stream Feed's JavaScript](https://github.com/GetStream/stream-js) library.
 
-For the frontend, we'll build it with Kotlin wrapping [Stream Feed's Java](https://github.com/GetStream/stream-java) library. To post a message, the mobile application goes throught his flow:
+For the frontend, we'll build it with Kotlin wrapping [Stream Feed's Java](https://github.com/GetStream/stream-java) library. 
+
+There's two main actions a user takes, posting and viewing messages. To post a message, the mobile application goes through his flow:
 
 * User types their name into our mobile application to log in.
 * The Android app registers user with our backend and receives a Stream Activity Feed [frontend token](https://getstream.io/blog/integrating-with-stream-backend-frontend-options/).
-* User types in their message and hits "Post". The mobile app uses the Stream token to create a Stream activity via Stream's REST API via the [Java library](https://github.com/GetStream/stream-java).
+* User types in their message and hits "Post". The mobile app uses the Stream token to create a Stream activity on their `user` feed via Stream's REST API using the [Java library](https://github.com/GetStream/stream-java).
 * User views their posts. The mobile app does this by retrieving its user feed via Stream.
 
-If another user wants to follow a user and view their messages, the app goes through this process:
+Here's what happens if another user wants to follow a user and view their messages:
 
-* Log in (see above).
+* User logs in.
 * User navigates to the user list and selects a user to follow. The mobile app communicates with Stream API directly to create a [follower relationship](https://getstream.io/get_started/#follow) on their `timeline` feed.
 * User views their timeline. The mobile app uses Stream API to retrieve their `timeline` feed, which is composed of all the messages from who they follow.
 
@@ -33,15 +35,15 @@ Basic knowledge of Node.js (JavaScript) and Android (Kotlin) is required to foll
 
 If you'd like to follow along, you'll need an account with [Stream](https://getstream.io/accounts/signup/). Please make sure you can [build a simple Android app](https://developer.android.com/training/basics/firstapp) before embarking on this tutorial. If you haven't done so, make sure you have [Android Studio](https://developer.android.com/studio/install) installed. 
 
-Once you have an account with Stream, you need to set up a development app:
+Once you have an account with Stream, you need to set up a development app. This is done from your dashboard:
 
 ![](images/create-app.png)
 
-You'll need to add the credentials from the Stream app to the source code for it to work. See both the mobile and backend readmes.
+You'll need to add the credentials from the Stream app to the `backend` `.env` file and start the server for mobile application to work. See the `backend` `README.md` for more information.
 
 Let's get to building!
 
-## User Posts a Status Update
+## User Posts a Message
 
 We'll start with a user posting a message.
 
@@ -130,7 +132,7 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
 }
 ```
 
-*Note: The asyncronous approach in this tutorial is not necessarily the best or most robust approach. It's simply a straightforward way to show async interactions without cluttering the code too much. Please research and pick the best asynchronous solution for your application*
+*Note: The asyncronous approach in this tutorial is not necessarily the best or most robust approach. It's simply a straightforward way to show async interactions without cluttering the code too much. Please research and pick the best asynchronous solution for your application.*
 
 
 Here we bind to our button and user input. We listen to the submit button and sign into our backend. Since this work is making network calls, we need to do this asynchronously. We use Kotlin coroutines to accomplish this by binding to the [`MainScope`](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-main-scope.html). We dispatch our sign in code which tells our `BackendService` to perform two tasks, sign in to backend and get the feed frontend credentials. We'll look at how the `BackendService` accomplishes this in a second. 
@@ -318,7 +320,7 @@ With the layout:
 </androidx.constraintlayout.widget.ConstraintLayout>
 ```
 
-This simple layout is identical to our log in widget. When bind to our submit and take the `EditText` text value and send that to `FeedService.post`. When compoleted, we set a success result and finish the activity. Let's look at `FeedService.post`:
+This simple layout is identical to our log in widget. When bind to our submit and take the `EditText` text value and send that to `FeedService.post`. When completed, we set a success result and finish the activity. Let's look at `FeedService.post`:
 
 ```kotlin
 // android/app/src/main/java/io/getstream/thestream/services/FeedService.kt:40
@@ -482,7 +484,7 @@ class FeedAdapter(context: Context, objects: MutableList<Activity>) :
 }
 ```
 
-To keep thing simple, we use a simple list layout, with a custom view (`feed_item`, please see source) that shows the message and author. However, you can build any view you want! Here, the message is in extras to show you how to include arbitrary data in your activities. Extras is a container that allows you to include any data you want.
+To keep thing simple, we use a simple list layout, with a custom view (`feed_item`, please see source) that shows the message and author. However, you can build any view you want! Here, the message is in `extras` to show you how to include arbitrary data in your activities. The `extras` container allows you to attach any data you want to an Activity.
 
 Next we'll see how to follow multiple user's via a timeline feed.
 
@@ -591,7 +593,7 @@ fun getUsers(): List<String> {
 }
 ```
 
-The `backend` is a mock implementation that simple stores the users in an object. We won't go into this here, but refer to source if interesting and be sure to back this with a real implementation. 
+The `backend` is a mock implementation that simple stores the users in an object. We won't go into this here, but refer to source if interesting and be sure to back this with a real implementation in your production application. 
 
 Once we have our users we build our list and bind a click listener. This listener will pop open an alert dialog that allows us to follow a user. If a user chooses to follow a user we call `FeedService.follow`:
 
