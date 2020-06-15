@@ -244,3 +244,434 @@ Now that we're authenticated with Stream, we're ready to post our first message!
 
 ### Step 2: Posting a Message
 
+Now we'll build the form to post a status message to our Stream activity feed. We won't dive into navigation and layout in this tutorial. Please refer to the [source](https://github.com/psylinse/stream-android-custom-timeline) if you're curious about how we get to this screen or skip ahead to Step 3. We'll need to build a form that takes what the user wants to say to their followers and submit that to Stream. We use an activity called `CreatePostActivity` to handle new posts:
+
+```kotlin
+// android/app/src/main/java/io/getstream/thestream/CreatePostActivity.kt:13
+const val POST_SUCCESS = 99
+
+class CreatePostActivity : AppCompatActivity(), CoroutineScope by MainScope() {
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_create_post)
+
+        val submit: Button = findViewById(R.id.submit)
+        val postView: EditText = findViewById(R.id.post_text)
+
+        submit.setOnClickListener {
+            val text: String = postView.text.toString()
+
+            launch(Dispatchers.IO) {
+                FeedService.post(text)
+
+                launch(Dispatchers.Main) {
+                    setResult(POST_SUCCESS)
+                    finish()
+                }
+            }
+        }
+    }
+}
+```
+
+With the layout:
+
+```xml
+<!-- android/app/src/main/res/layout/activity_create_post.xml:1 -->
+<?xml version="1.0" encoding="utf-8"?>
+
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                                                   xmlns:app="http://schemas.android.com/apk/res-auto"
+                                                   xmlns:tools="http://schemas.android.com/tools"
+                                                   android:layout_width="match_parent"
+                                                   android:layout_height="match_parent"
+                                                   tools:context="io.getstream.thestream.MainActivity">
+
+    <EditText
+        android:id="@+id/post_text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:autofillHints="Enter Post..."
+        android:ems="10"
+        android:hint="Post Text"
+        android:inputType="text"
+        app:layout_constraintEnd_toStartOf="@+id/submit"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"/>
+
+    <Button
+        android:id="@+id/submit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:text="Post"
+        app:layout_constraintBaseline_toBaselineOf="@+id/post_text"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.5"
+        app:layout_constraintStart_toEndOf="@+id/post_text"/>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
+```
+
+This simple layout is identical to our log in widget. When bind to our submit and take the `EditText` text value and send that to `FeedService.post`. When compoleted, we set a success result and finish the activity. Let's look at `FeedService.post`:
+
+```kotlin
+// android/app/src/main/java/io/getstream/thestream/services/FeedService.kt:40
+fun post(message: String) {
+    val feed = client.flatFeed("user")
+    feed.addActivity(
+        Activity
+            .builder()
+            .actor("SU:${user}")
+            .verb("post")
+            .`object`(UUID.randomUUID().toString())
+            .extraField("message", message)
+            .build()
+    ).join()
+}
+```
+
+Here we use Stream Java's `CloudClient` from the [Cloud package](https://getstream.github.io/stream-java/io/getstream/cloud/package-summary.html). This set of classes take our frontend token which allows the mobile app to communicate directly with Stream. We are authenticated only to post activities for the actor SU:john (SU means Stream User). Since we aren't storing a corresponding object in a database, we generate an id to keep each post unique. We also pass along a message payload which is what our followers will see.
+
+You may be wondering what the `client.flatFeed("user")` is referring to. In order for this to work, we need to set up a flat feed called "user" in Stream. This is where every user's feed, which only contains their messages will be stored. Later we'll see how one user can follow another user's feed.
+
+Inside of your Stream development app create a flat feed called "user":
+
+![](images/create-user-feed.png)
+
+That's all we need for Stream to store our messages. Once all of functions return we return to the user's profile screen which will display our posted messages. We'll build this next.
+
+### Step 3: Displaying Messages on our Profile
+
+Let's first build a fragment that will contain the user's messages. Here is what the screen will look like:
+
+![](images/profile.png)
+
+And here is the code for the `ProfileFragment`:
+
+```kotlin
+class ProfileFragment : Fragment(), CoroutineScope by MainScope() {
+    private lateinit var adapter: FeedAdapter
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val rootView: View = inflater.inflate(R.layout.fragment_profile, container, false)
+        val listView: ListView = rootView.findViewById(R.id.list_profile_feed)
+
+        adapter = FeedAdapter(rootView.context, mutableListOf())
+        listView.adapter = adapter
+
+        val newPost: View = rootView.findViewById(R.id.new_post)
+        newPost.setOnClickListener {
+            startActivityForResult(
+                Intent(rootView.context, CreatePostActivity::class.java),
+                POST_SUCCESS
+            )
+        }
+
+        loadProfileFeed()
+
+        return rootView
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (resultCode == POST_SUCCESS) {
+            loadProfileFeed()
+        }
+    }
+
+    private fun loadProfileFeed() {
+        launch(Dispatchers.IO) {
+            val profileFeed = FeedService.profileFeed()
+
+            launch(Dispatchers.Main) {
+                adapter.clear()
+                adapter.addAll(profileFeed)
+            }
+        }
+    }
+}
+```
+
+And the layout:
+
+```xml
+<!-- android/app/src/main/res/layout/fragment_profile.xml -->
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             xmlns:tools="http://schemas.android.com/tools"
+             android:layout_width="match_parent"
+             android:layout_height="match_parent"
+             tools:context=".ProfileFragment">
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/new_post"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end|bottom"
+        android:layout_margin="16dp"
+        android:src="@drawable/ic_add_white_24dp"/>
+
+    <ListView
+        android:id="@+id/list_profile_feed"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+</FrameLayout>
+```
+
+The `ProfileFragment` does two things. First, it has a floating action button which starts our `CreatePostActivity`, which we saw in Step 2, and handles the result. Second, it loads our personal feed and displays those messages.
+
+Let's see how we load our messages via `FeedService.profileFeed()` invoked inside of `loadProfileFeed`:
+
+```kotlin
+// android/app/src/main/java/io/getstream/thestream/services/FeedService.kt:33
+fun profileFeed(): MutableList<Activity> {
+    return client
+        .flatFeed("user")
+        .getActivities(Limit(25))
+        .join()
+}
+```
+
+Using this result, we pass the activities into a `FeedAdapter` which backs a simple `ListAdapter`. Here you can see how to use the raw results from Stream however you want. In this case we'll simply display the activity's message and author:
+
+```kotlin
+// android/app/src/main/java/io/getstream/thestream/FeedAdapter.kt:13
+class FeedAdapter(context: Context, objects: MutableList<Activity>) :
+    ArrayAdapter<Activity>(context, android.R.layout.simple_list_item_1, objects) {
+
+    private data class ViewHolder(
+        val author: TextView,
+        val message: TextView
+    )
+
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+        val streamActivity: Activity = getItem(position)!!
+        val viewHolder: ViewHolder
+        var newView = convertView
+
+        if (newView == null) {
+            val inflater = LayoutInflater.from(context)
+            newView = inflater.inflate(R.layout.feed_item, parent, false)
+            viewHolder = ViewHolder(
+                newView.timeline_item_author_name as TextView,
+                newView.timeline_item_message as TextView
+            )
+        } else {
+            viewHolder = newView.tag as ViewHolder
+        }
+
+        viewHolder.author.text = streamActivity.actor.replace("SU:", "")
+        viewHolder.message.text = streamActivity.extra["message"] as String
+
+        newView!!.tag = viewHolder
+
+        return newView
+    }
+}
+```
+
+To keep thing simple, we use a simple list layout, with a custom view (`feed_item`, please see source) that shows the message and author. However, you can build any view you want! Here, the message is in extras to show you how to include arbitrary data in your activities. Extras is a container that allows you to include any data you want.
+
+Next we'll see how to follow multiple user's via a timeline feed.
+
+## User Timeline
+
+Now that users can post messages, we'd like to follow a few and see a combined feed of all the messages for users we follow.
+
+### Step 1: Follow a User
+
+The first thing we need to do is view a list of users and pick a few to follow. We'll start by creating a view that shows all the users and lets a user follow a few. Here is the screen that shows all the users:
+
+![](images/users.png)
+
+This is backed by a `PeopleFragment`:
+
+```kotlin
+// android/app/src/main/java/io/getstream/thestream/PeopleFragment.kt:21
+class PeopleFragment : Fragment(), CoroutineScope by MainScope() {
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val rootView: View = inflater.inflate(R.layout.fragment_people, container, false)
+        val list: ListView = rootView.findViewById(R.id.list_people)
+
+        val adapter = ArrayAdapter(
+            rootView.context,
+            android.R.layout.simple_list_item_1,
+            mutableListOf<String>()
+        )
+        list.adapter = adapter
+
+        list.onItemClickListener = AdapterView.OnItemClickListener { _, _, position, _ ->
+            val alertDialogBuilder: AlertDialog.Builder = AlertDialog.Builder(rootView.context)
+
+            alertDialogBuilder.setTitle("Pick an action")
+            alertDialogBuilder.setPositiveButton("Follow") { dialog, _ ->
+                val otherUser = adapter.getItem(position).toString()
+                FeedService.follow(otherUser)
+
+                dialog.dismiss()
+
+                Toast
+                    .makeText(context, "Successfully followed $otherUser", Toast.LENGTH_LONG)
+                    .show()
+            }
+
+            alertDialogBuilder.setNegativeButton("Close") { dialog, _ ->
+                dialog.dismiss()
+            }
+
+            alertDialogBuilder.show()
+        }
+
+        launch(Dispatchers.IO) {
+            val users = BackendService.getUsers()
+
+            launch(Dispatchers.Main) { adapter.addAll(users) }
+        }
+
+        return rootView
+    }
+
+}
+```
+
+And the layout:
+
+```xml
+<!-- android/app/src/main/res/layout/fragment_people.xml:1 -->
+<?xml version="1.0" encoding="utf-8"?>
+
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             xmlns:tools="http://schemas.android.com/tools"
+             android:layout_width="match_parent"
+             android:layout_height="match_parent"
+             tools:context=".PeopleFragment">
+
+    <ListView
+        android:id="@+id/list_people"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
+</FrameLayout>
+```
+
+The `PeopleFragment` is a simple list view that displays our people. To populate the users on load, we use `BackendService.getUsers()` which is a simple `GET` request against our backend:
+
+```kotlin
+// android/app/src/main/java/io/getstream/thestream/services/BackendService.kt:42
+fun getUsers(): List<String> {
+    val request = Request.Builder()
+        .url("$apiRoot/v1/users")
+        .addHeader("Authorization", "Bearer $authToken")
+        .get()
+
+    http.newCall(request.build()).execute().use { response ->
+        val jsonArray = JSONObject(response.body!!.string()).getJSONArray("users")
+
+        return List(jsonArray.length()) { i ->
+            jsonArray.get(i).toString()
+        }.filterNot { it == user }
+    }
+}
+```
+
+The `backend` is a mock implementation that simple stores the users in an object. We won't go into this here, but refer to source if interesting and be sure to back this with a real implementation. 
+
+Once we have our users we build our list and bind a click listener. This listener will pop open an alert dialog that allows us to follow a user. If a user chooses to follow a user we call `FeedService.follow`:
+
+```kotlin
+// android/app/src/main/java/io/getstream/thestream/services/FeedService.kt:19
+fun follow(otherUser: String) {
+    client
+        .flatFeed("timeline")
+        .follow(client.flatFeed("user", otherUser))
+        .join()
+}
+```
+
+Here we're adding a [follow relationship](https://getstream.io/docs/#following) to another user's `user` feed to this user's `timeline` feed. All this means is anytime a user posts to their user feed (implemented in the first part) we'll see it on our `timeline` feed. The cool part is, we can add any number of users feeds to our `timeline` feed and Stream will return a well-ordered list of activities.
+
+Since we have a new feed type, we need to set this up in Stream. Just like the `user` feed, navigate to the Stream app you set up and create a flat feed group called timeline:
+
+![](images/create-timeline-feed.png)
+
+## Step 2: View Timeline
+
+Now that we have a way to follow users we can view our timeline. When we're done, assuming we've followed "bob" and "sara" we'll see a screen that looks like this:
+
+![](images/timeline.png)
+
+Let's look at the code to display our timeline. We have a `TimelineFragment`:
+
+```kotlin
+// android/app/src/main/java/io/getstream/thestream/TimelineFragment.kt:16
+class TimelineFragment : Fragment(), CoroutineScope by MainScope() {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
+        val rootView: View = inflater.inflate(R.layout.fragment_timeline, container, false)
+        val listView: ListView = rootView.findViewById<View>(R.id.list_timeline) as ListView
+        val adapter = FeedAdapter(context!!, mutableListOf())
+
+        listView.adapter = adapter
+
+        launch(Dispatchers.IO) {
+            val timelineFeed = FeedService.timelineFeed()
+            launch(Dispatchers.Main) { adapter.addAll(timelineFeed) }
+        }
+
+        return rootView
+    }
+}
+```
+
+And our layout:
+
+```xml
+<!-- android/app/src/main/res/layout/fragment_timeline.xml:1 -->
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+             xmlns:tools="http://schemas.android.com/tools"
+             android:layout_width="match_parent"
+             android:layout_height="match_parent"
+             tools:context=".TimelineFragment">
+
+    <ListView
+        android:id="@+id/list_timeline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+</FrameLayout>
+```
+
+Since we already built our `FeedAdapter`, we simply need to get the activities for `timeline` via `FeedService.timelineFeeed`:
+
+```kotlin
+// android/app/src/main/java/io/getstream/thestream/services/FeedService.kt:26
+fun timelineFeed(): MutableList<Activity> {
+    return client
+        .flatFeed("timeline")
+        .getActivities(Limit(25))
+        .join()
+}
+```
+
+This code is the same as getting our profile, except we ask for our `timeline` feed instead. And that's it! We now have a fully functioning mini social network.
