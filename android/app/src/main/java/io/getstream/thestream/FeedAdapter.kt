@@ -4,41 +4,44 @@ import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
 import android.widget.TextView
+import androidx.recyclerview.widget.RecyclerView
 import io.getstream.core.models.Activity
-import kotlinx.android.synthetic.main.feed_item.view.*
 
 
-class FeedAdapter(context: Context, objects: MutableList<Activity>) :
-    ArrayAdapter<Activity>(context, android.R.layout.simple_list_item_1, objects) {
+class FeedAdapter(
+    val context: Context
+) : RecyclerView.Adapter<FeedAdapter.VH>() {
 
-    private data class ViewHolder(
-        val author: TextView,
-        val message: TextView
-    )
+    val objects = mutableListOf<Activity>()
 
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-        val streamActivity: Activity = getItem(position)!!
-        val viewHolder: ViewHolder
-        var newView = convertView
+    fun setData(activities: List<Activity>) {
+        objects.clear()
+        objects.addAll(activities)
+    }
 
-        if (newView == null) {
-            val inflater = LayoutInflater.from(context)
-            newView = inflater.inflate(R.layout.feed_item, parent, false)
-            viewHolder = ViewHolder(
-                newView.timeline_item_author_name as TextView,
-                newView.timeline_item_message as TextView
-            )
-        } else {
-            viewHolder = newView.tag as ViewHolder
+    override fun getItemCount(): Int {
+        return objects.size
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
+        val inflater = LayoutInflater.from(context)
+        val view = inflater.inflate(R.layout.feed_item, parent, false)
+        return VH(view)
+    }
+
+    override fun onBindViewHolder(holder: VH, position: Int) {
+        holder.bind(objects[position])
+    }
+
+    class VH(view: View) : RecyclerView.ViewHolder(view) {
+        fun bind(activity: Activity) {
+
+            val author = activity.actor.replace("SU:", "")
+            val message = activity.extra["message"] as String
+
+            itemView.findViewById<TextView>(R.id.timeline_item_author_name).text = author
+            itemView.findViewById<TextView>(R.id.timeline_item_message).text = message
         }
-
-        viewHolder.author.text = streamActivity.actor.replace("SU:", "")
-        viewHolder.message.text = streamActivity.extra["message"] as String
-
-        newView!!.tag = viewHolder
-
-        return newView
     }
 }

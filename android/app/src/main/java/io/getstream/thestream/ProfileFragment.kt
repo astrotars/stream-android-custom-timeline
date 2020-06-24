@@ -5,9 +5,10 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ListView
+import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.Fragment
 import io.getstream.thestream.services.FeedService
+import kotlinx.android.synthetic.main.fragment_profile.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
@@ -22,13 +23,11 @@ class ProfileFragment : Fragment(), CoroutineScope by MainScope() {
         savedInstanceState: Bundle?
     ): View? {
         val rootView: View = inflater.inflate(R.layout.fragment_profile, container, false)
-        val listView: ListView = rootView.findViewById(R.id.list_profile_feed)
 
-        adapter = FeedAdapter(rootView.context, mutableListOf())
-        listView.adapter = adapter
+        adapter = FeedAdapter(rootView.context)
+        recyclerProfileFeed.adapter = adapter
 
-        val newPost: View = rootView.findViewById(R.id.new_post)
-        newPost.setOnClickListener {
+        btnNewPost.setOnClickListener {
             startActivityForResult(
                 Intent(rootView.context, CreatePostActivity::class.java),
                 POST_SUCCESS
@@ -49,13 +48,26 @@ class ProfileFragment : Fragment(), CoroutineScope by MainScope() {
     }
 
     private fun loadProfileFeed() {
-        launch(Dispatchers.IO) {
-            val profileFeed = FeedService.profileFeed()
+        try {
+            launch(Dispatchers.IO) {
+                val profileFeed = FeedService.profileFeed()
 
-            launch(Dispatchers.Main) {
-                adapter.clear()
-                adapter.addAll(profileFeed)
+                launch(Dispatchers.Main) {
+                    adapter.setData(profileFeed)
+                }
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            showError(e.message)
         }
+    }
+
+    private fun showError(message: String?) {
+
+        AlertDialog.Builder(context!!)
+            .setTitle(R.string.error)
+            .setMessage(message ?: getString(R.string.unknown_error))
+            .setPositiveButton(R.string.ok, null)
+            .show()
     }
 }

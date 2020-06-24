@@ -57,13 +57,30 @@ class PeopleFragment : Fragment(), CoroutineScope by MainScope() {
             alertDialogBuilder.show()
         }
 
-        launch(Dispatchers.IO) {
-            val users = BackendService.getUsers()
+        try {
+            launch(Dispatchers.IO) {
+                val users = BackendService.getUsers()
 
-            launch(Dispatchers.Main) { adapter.addAll(users) }
+                launch(Dispatchers.Main) { adapter.addAll(users) }
+            }
+        } catch (e: Throwable) {
+            launch(Dispatchers.Main) {
+                e.printStackTrace()
+                showError(e.message)
+            }
         }
 
         return rootView
+    }
+
+
+    private fun showError(message: String?) {
+
+        AlertDialog.Builder(context!!)
+            .setTitle(R.string.error)
+            .setMessage(message ?: getString(R.string.unknown_error))
+            .setPositiveButton(R.string.ok, null)
+            .show()
     }
 
 }

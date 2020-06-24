@@ -2,11 +2,11 @@ package io.getstream.thestream
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Button
-import android.widget.EditText
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import io.getstream.thestream.services.BackendService
 import io.getstream.thestream.services.FeedService
+import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
@@ -18,25 +18,40 @@ class MainActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val submit: Button = findViewById(R.id.submit)
-        val userView: EditText = findViewById(R.id.user)
+        btnSubmit.setOnClickListener {
 
-        submit.setOnClickListener {
-            val user: String = userView.text.toString()
+            val user = editUser.text.toString()
 
             launch(Dispatchers.IO) {
-                BackendService.signIn(user)
 
-                val feedCredentials = BackendService.getFeedCredentials()
+                try {
+                    BackendService.signIn(user)
 
-                launch(Dispatchers.Main) {
-                    FeedService.init(user, feedCredentials)
+                    val feedCredentials = BackendService.getFeedCredentials()
 
-                    startActivity(
-                        Intent(applicationContext, AuthedMainActivity::class.java)
-                    )
+                    launch(Dispatchers.Main) {
+                        FeedService.init(user, feedCredentials)
+
+                        startActivity(
+                            Intent(applicationContext, AuthedMainActivity::class.java)
+                        )
+                    }
+
+                } catch (t: Throwable) {
+                    t.printStackTrace()
+                    launch(Dispatchers.Main) {
+                        showError(t.message)
+                    }
                 }
             }
         }
+    }
+
+    private fun showError(message: String?) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.error)
+            .setMessage(message ?: getString(R.string.unknown_error))
+            .setPositiveButton(R.string.ok, null)
+            .show()
     }
 }

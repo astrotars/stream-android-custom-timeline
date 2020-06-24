@@ -18,7 +18,7 @@ class CreatePostActivity : AppCompatActivity(), CoroutineScope by MainScope() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_create_post)
 
-        val submit: Button = findViewById(R.id.submit)
+        val submit: Button = findViewById(R.id.btnSubmit)
         val postView: EditText = findViewById(R.id.post_text)
 
         submit.setOnClickListener {
