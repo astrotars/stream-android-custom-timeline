@@ -6,15 +6,15 @@
              tools:context=".ProfileFragment">
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/new_post"
+        android:id="@+id/btnNewPost"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="end|bottom"
         android:layout_margin="16dp"
         android:src="@drawable/ic_add_white_24dp"/>
 
-    <ListView
-        android:id="@+id/list_profile_feed"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerProfileFeed"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
